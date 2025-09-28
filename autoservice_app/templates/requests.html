@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Обращения</h2>
+
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addRequestModal">Добавить обращение</button>
+
+<table class="table table-striped">
+    <thead>
+    <tr>
+        <th>ID</th><th>Автомобиль</th><th>Дата</th><th>Описание проблем</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for req in requests %}
+        <tr>
+            <td>{{ req.id }}</td>
+            <td>{{ req.car.number }} ({{ req.car.brand }})</td>
+            <td>{{ req.request_date }}</td>
+            <td>{{ req.issues }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" id="addRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Новое обращение</h5></div>
+            <div class="modal-body">
+                <select class="form-control mb-2" name="car_id" required>
+                    {% for car in cars %}
+                        <option value="{{ car.id }}">{{ car.number }} ({{ car.brand }})</option>
+                    {% endfor %}
+                </select>
+                <textarea class="form-control mb-2" name="issues" placeholder="Описание проблем" required></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" type="submit">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

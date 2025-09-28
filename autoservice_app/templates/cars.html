@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Автомобили</h2>
+
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addCarModal">Добавить автомобиль</button>
+
+<table class="table table-striped">
+    <thead>
+    <tr>
+        <th>ID</th><th>Номер</th><th>Марка</th><th>Год выпуска</th><th>Владелец</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for car in cars %}
+        <tr>
+            <td>{{ car.id }}</td>
+            <td>{{ car.number }}</td>
+            <td>{{ car.brand }}</td>
+            <td>{{ car.release_date }}</td>
+            <td>{{ car.owner.last_name }} {{ car.owner.first_name }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" id="addCarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Новый автомобиль</h5></div>
+            <div class="modal-body">
+                <input class="form-control mb-2" name="number" placeholder="Гос. номер" required>
+                <input class="form-control mb-2" name="brand" placeholder="Марка" required>
+                <input class="form-control mb-2" type="date" name="release_date" required>
+                <select class="form-control mb-2" name="owner_id" required>
+                    {% for owner in owners %}
+                        <option value="{{ owner.id }}">{{ owner.last_name }} {{ owner.first_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" type="submit">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

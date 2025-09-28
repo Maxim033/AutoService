@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Ремонты</h2>
+
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addRepairModal">Добавить ремонт</button>
+
+<table class="table table-striped">
+    <thead>
+    <tr>
+        <th>ID</th><th>Обращение</th><th>Описание</th><th>Дата завершения</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for r in repairs %}
+        <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.request.id }}</td>
+            <td>{{ r.description }}</td>
+            <td>{{ r.completion_date or '' }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" id="addRepairModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Новый ремонт</h5></div>
+            <div class="modal-body">
+                <select class="form-control mb-2" name="request_id" required>
+                    {% for req in requests %}
+                        <option value="{{ req.id }}">Обращение {{ req.id }} — {{ req.car.number }}</option>
+                    {% endfor %}
+                </select>
+                <textarea class="form-control mb-2" name="description" placeholder="Описание работ" required></textarea>
+                <input class="form-control mb-2" type="date" name="completion_date">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" type="submit">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

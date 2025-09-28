@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Владельцы</h2>
+
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addOwnerModal">Добавить владельца</button>
+
+<table class="table table-striped">
+    <thead>
+    <tr>
+        <th>ID</th><th>Фамилия</th><th>Имя</th><th>Отчество</th><th>Телефон</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for owner in owners %}
+        <tr>
+            <td>{{ owner.id }}</td>
+            <td>{{ owner.last_name }}</td>
+            <td>{{ owner.first_name }}</td>
+            <td>{{ owner.middle_name or '' }}</td>
+            <td>{{ owner.phone }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" id="addOwnerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Новый владелец</h5></div>
+            <div class="modal-body">
+                <input class="form-control mb-2" name="last_name" placeholder="Фамилия" required>
+                <input class="form-control mb-2" name="first_name" placeholder="Имя" required>
+                <input class="form-control mb-2" name="middle_name" placeholder="Отчество">
+                <input class="form-control mb-2" name="phone" placeholder="Телефон" required>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" type="submit">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

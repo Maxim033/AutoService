@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Запчасти</h2>
+
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addSpareModal">Добавить запчасть</button>
+
+<table class="table table-striped">
+    <thead>
+    <tr>
+        <th>ID</th><th>Ремонт</th><th>Название</th><th>Номер</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for sp in spares %}
+        <tr>
+            <td>{{ sp.id }}</td>
+            <td>{{ sp.repair.id }}</td>
+            <td>{{ sp.name }}</td>
+            <td>{{ sp.number }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" id="addSpareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Новая запчасть</h5></div>
+            <div class="modal-body">
+                <select class="form-control mb-2" name="repair_id" required>
+                    {% for r in repairs %}
+                        <option value="{{ r.id }}">Ремонт {{ r.id }}</option>
+                    {% endfor %}
+                </select>
+                <input class="form-control mb-2" name="name" placeholder="Название" required>
+                <input class="form-control mb-2" name="number" placeholder="Каталожный номер" required>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" type="submit">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

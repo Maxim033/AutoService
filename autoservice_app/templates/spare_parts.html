@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Запчасти</h2>
+
+<button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addPartModal">
+  ➕ Добавить запчасть
+</button>
+
+<div class="modal fade" id="addPartModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post">
+        <div class="modal-header">
+          <h5 class="modal-title">Новая запчасть</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2"><label>Ремонт</label>
+            <select name="repair_id" class="form-control" required>
+              {% for r in repairs %}
+              <option value="{{ r.id }}">{{ r.description[:30] }}...</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2"><label>Название</label><input type="text" name="name" class="form-control" required></div>
+          <div class="mb-2"><label>Номер</label><input type="text" name="number" class="form-control" required></div>
+        </div>
+        <div class="modal-footer"><button type="submit" class="btn btn-primary">Сохранить</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<table class="table table-striped">
+  <thead><tr><th>Ремонт</th><th>Название</th><th>Номер</th></tr></thead>
+  <tbody>
+    {% for p in spare_parts %}
+    <tr>
+      <td>{{ p.repair.description[:30] }}...</td>
+      <td>{{ p.name }}</td>
+      <td>{{ p.number }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3">Нет запчастей</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
