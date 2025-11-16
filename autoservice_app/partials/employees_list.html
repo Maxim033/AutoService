@@ -1,0 +1,32 @@
+{% if employees %}
+<div class="row">
+    {% for emp in employees %}
+    <div class="col-md-4 mb-2">
+        <div class="card employee-card">
+            <div class="card-body p-2">
+                <div class="form-check">
+                    <input class="form-check-input employee-checkbox"
+                           type="checkbox"
+                           name="employee_ids"
+                           value="{{ emp.id }}"
+                           id="emp_{{ emp.id }}">
+                    <label class="form-check-label w-100" for="emp_{{ emp.id }}">
+                        <div class="fw-bold">{{ emp.full_name }}</div>
+                        <div class="small text-muted">
+                            <div>{{ emp.position }}</div>
+                            <div>Стаж: {{ emp.experience }} лет</div>
+                            <div>График: {{ emp.schedule }}</div>
+                            <div class="text-success">З/п: {{ helper.format_currency(emp.salary) }}</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> Нет доступных сотрудников
+</div>
+{% endif %}

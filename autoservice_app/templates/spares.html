@@ -1,45 +1,217 @@
 {% extends "base.html" %}
+{% block title %}Запчасти{% endblock %}
 {% block content %}
-<h2>Запчасти</h2>
+<div class="container mt-4">
+    <h2 class="mb-4">💾 Запчасти</h2>
 
-<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addSpareModal">Добавить запчасть</button>
-
-<table class="table table-striped">
-    <thead>
-    <tr>
-        <th>ID</th><th>Ремонт</th><th>Название</th><th>Номер</th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for sp in spares %}
-        <tr>
-            <td>{{ sp.id }}</td>
-            <td>{{ sp.repair.id }}</td>
-            <td>{{ sp.name }}</td>
-            <td>{{ sp.number }}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
-
-<div class="modal fade" id="addSpareModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <form method="post" class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Новая запчасть</h5></div>
-            <div class="modal-body">
-                <select class="form-control mb-2" name="repair_id" required>
-                    {% for r in repairs %}
-                        <option value="{{ r.id }}">Ремонт {{ r.id }}</option>
-                    {% endfor %}
-                </select>
-                <input class="form-control mb-2" name="name" placeholder="Название" required>
-                <input class="form-control mb-2" name="number" placeholder="Каталожный номер" required>
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Список запчастей -->
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📦 Список запчастей</h5>
+                    <span class="badge bg-light text-dark">
+                        Всего: {{ spares|length }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    {% if spares %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Название</th>
+                                    <th>Номер</th>
+                                    <th>Ремонт</th>
+                                    <th>Кол-во</th>
+                                    <th>Стоимость</th>
+                                    <th>Дата установки</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for spare in spares %}
+                                <tr>
+                                    <td><strong>#{{ spare.id }}</strong></td>
+                                    <td>
+                                        <div class="fw-bold">{{ spare.name }}</div>
+                                        <small class="text-muted">для ремонта #{{ spare.repair_id }}</small>
+                                    </td>
+                                    <td>
+                                        <code class="bg-light p-1 rounded">{{ spare.number }}</code>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ spare.repair.description[:50] }}{% if spare.repair.description|length > 50 %}...{% endif %}
+                                        </small>
+                                        <br>
+                                        <small class="text-info">
+                                            {{ spare.repair.request.car.display_info }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ spare.quantity }} шт.</span>
+                                    </td>
+                                    <td class="fw-bold text-success">
+                                        {{ helper.format_currency(spare.total_cost) }}
+                                        <br>
+                                        <small class="text-muted">({{ helper.format_currency(spare.cost) }}/шт)</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ spare.formatted_installed_date }}</small>
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('main.delete_spare', spare_id=spare.id) }}"
+                                              class="d-inline" onsubmit="return confirm('Удалить эту запчасть?')">
+                                            <button type="submit" class="btn btn-danger btn-sm" title="Удалить">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info text-center">
+                        <h5>📭 Нет запчастей</h5>
+                        <p class="mb-0">Добавьте первую запчасть используя форму справа</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button class="btn btn-primary" type="submit">Сохранить</button>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Форма добавления запчасти -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">➕ Добавить запчасть</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('main.spares') }}">
+                        <div class="mb-3">
+                            <label for="repair_id" class="form-label">Ремонт *</label>
+                            <select class="form-select" name="repair_id" id="repair_id" required
+                                    onchange="updateRepairInfo(this.value)">
+                                <option value="">Выберите ремонт...</option>
+                                {% for repair in repairs %}
+                                <option value="{{ repair.id }}"
+                                        data-description="{{ repair.description }}"
+                                        data-car="{{ repair.request.car.display_info }}"
+                                        data-cost="{{ repair.cost }}">
+                                    Ремонт #{{ repair.id }} - {{ repair.request.car.display_info }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div id="repairInfo" class="form-text mt-2" style="display: none;">
+                                <strong>Информация о ремонте:</strong>
+                                <div id="repairDetails" class="mt-1 p-2 bg-light rounded"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Название запчасти *</label>
+                            <input type="text" class="form-control" name="name"
+                                   placeholder="Например: Тормозной диск" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="number" class="form-label">Номер запчасти *</label>
+                            <input type="text" class="form-control" name="number"
+                                   placeholder="Например: DISC-12345" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cost" class="form-label">Стоимость за шт. (₽) *</label>
+                                <input type="number" step="0.01" class="form-control"
+                                       name="cost" placeholder="0.00" min="0" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="quantity" class="form-label">Количество *</label>
+                                <input type="number" class="form-control" name="quantity"
+                                       value="1" min="1" max="100" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">
+                            💾 Сохранить запчасть
+                        </button>
+                    </form>
+                </div>
             </div>
-        </form>
+
+            <!-- Статистика -->
+            <div class="card mt-3">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">📊 Статистика запчастей</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-primary">{{ spares|length }}</h4>
+                            <small class="text-muted">Всего запчастей</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">
+                                {{ helper.format_currency(spares|sum(attribute='total_cost')) }}
+                            </h4>
+                            <small class="text-muted">Общая стоимость</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                        <small class="text-muted">
+                            Установлено в {{ (spares|map(attribute='repair_id')|unique|list)|length }} ремонтах
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+function updateRepairInfo(repairId) {
+    const repairInfo = document.getElementById('repairInfo');
+    const repairDetails = document.getElementById('repairDetails');
+
+    if (!repairId) {
+        repairInfo.style.display = 'none';
+        return;
+    }
+
+    // Получаем информацию из data-атрибутов выбранного option
+    const selectedOption = document.querySelector(`#repair_id option[value="${repairId}"]`);
+    if (selectedOption) {
+        const description = selectedOption.getAttribute('data-description');
+        const car = selectedOption.getAttribute('data-car');
+        const cost = selectedOption.getAttribute('data-cost');
+
+        repairDetails.innerHTML = `
+            <div><strong>Автомобиль:</strong> ${car}</div>
+            <div><strong>Описание:</strong> ${description}</div>
+            <div><strong>Стоимость работ:</strong> ${parseFloat(cost).toLocaleString('ru-RU')} ₽</div>
+        `;
+        repairInfo.style.display = 'block';
+    }
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    const repairSelect = document.getElementById('repair_id');
+    if (repairSelect.value) {
+        updateRepairInfo(repairSelect.value);
+    }
+});
+</script>
+
+<style>
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+</style>
 {% endblock %}

@@ -1,45 +1,736 @@
 {% extends "base.html" %}
+{% block title %}Ремонты{% endblock %}
 {% block content %}
-<h2>Ремонты</h2>
+<div class="container mt-4">
+    <h2 class="mb-4">🔧 Ремонты</h2>
 
-<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addRepairModal">Добавить ремонт</button>
+    <ul class="nav nav-tabs" id="repairsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="active-tab" data-bs-toggle="tab"
+                    data-bs-target="#active" type="button" role="tab"
+                    aria-controls="active" aria-selected="true">
+                🔧 В процессе ({{ active_repairs_pagination.total }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="completed-tab" data-bs-toggle="tab"
+                    data-bs-target="#completed" type="button" role="tab"
+                    aria-controls="completed" aria-selected="false">
+                ✅ Завершённые ({{ completed_repairs_pagination.total }})
+            </button>
+        </li>
+    </ul>
 
-<table class="table table-striped">
-    <thead>
-    <tr>
-        <th>ID</th><th>Обращение</th><th>Описание</th><th>Дата завершения</th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for r in repairs %}
-        <tr>
-            <td>{{ r.id }}</td>
-            <td>{{ r.request.id }}</td>
-            <td>{{ r.description }}</td>
-            <td>{{ r.completion_date or '' }}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
+    <div class="tab-content mt-3" id="repairsTabsContent">
 
-<div class="modal fade" id="addRepairModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <form method="post" class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Новый ремонт</h5></div>
-            <div class="modal-body">
-                <select class="form-control mb-2" name="request_id" required>
-                    {% for req in requests %}
-                        <option value="{{ req.id }}">Обращение {{ req.id }} — {{ req.car.number }}</option>
+        <!-- Вкладка 1: Активные ремонты -->
+        <div class="tab-pane fade show active" id="active" role="tabpanel" aria-labelledby="active-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Ремонты в процессе</h4>
+                <div class="text-muted">
+                    Страница {{ active_repairs_pagination.page }} из {{ active_repairs_pagination.pages }}
+                    ({{ active_repairs_pagination.total }} всего)
+                </div>
+            </div>
+
+            {% if active_display %}
+            <!-- Пагинация сверху -->
+            {% if active_repairs_pagination.pages > 1 %}
+            <nav aria-label="Навигация по страницам">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {% if not active_repairs_pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('main.repairs', page=active_repairs_pagination.prev_num) }}">
+                            ← Назад
+                        </a>
+                    </li>
+
+                    {% for page_num in active_repairs_pagination.iter_pages() %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == active_repairs_pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('main.repairs', page=page_num) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
                     {% endfor %}
-                </select>
-                <textarea class="form-control mb-2" name="description" placeholder="Описание работ" required></textarea>
-                <input class="form-control mb-2" type="date" name="completion_date">
+
+                    <li class="page-item {% if not active_repairs_pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('main.repairs', page=active_repairs_pagination.next_num) }}">
+                            Вперед →
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+
+            <table class="table table-striped table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Описание</th>
+                        <th>Дата начала</th>
+                        <th>Машина</th>
+                        <th>Сотрудники</th>
+                        <th>Стоимость</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in active_display %}
+                    <tr>
+                        <td><strong>#{{ r.id }}</strong></td>
+                        <td>
+                            <div class="fw-bold">{{ r.description }}</div>
+                            {% if r.parts_count > 0 %}
+                            <small class="text-muted">📦 {{ r.parts_count }} запчастей</small>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold">{{ r.start_date }}</td>
+                        <td>{{ r.car }}</td>
+                        <td>
+                            {% if r.employees %}
+                                <div class="employee-list">
+                                    {% for emp in r.employees %}
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div>
+                                            <span class="badge bg-info">{{ emp.full_name }}</span>
+                                            <small class="text-muted">({{ emp.position }})</small>
+                                        </div>
+                                        <form method="POST"
+                                              action="{{ url_for('main.remove_employee', repair_id=r.id, employee_id=emp.id) }}"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Убрать сотрудника {{ emp.full_name }} с ремонта?')">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">×</button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">Нет назначенных</span>
+                            {% endif %}
+
+                            <!-- Форма назначения сотрудника -->
+                            <form method="POST" action="{{ url_for('main.assign_employee', repair_id=r.id) }}"
+                                  class="mt-2">
+                                <div class="input-group input-group-sm">
+                                    <select name="employee_id" class="form-select form-select-sm" required>
+                                        <option value="">Выберите сотрудника...</option>
+                                        {% for emp in employees %}
+                                        <option value="{{ emp.id }}">
+                                            {{ emp.full_name }} ({{ emp.position }}, стаж: {{ emp.experience }}л.)
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-success btn-sm">+</button>
+                                </div>
+                            </form>
+                        </td>
+                        <td>{{ helper.format_currency(r.cost) }}</td>
+                        <td>
+                            <a href="{{ url_for('main.complete_repair', repair_id=r.id) }}"
+                               class="btn btn-success btn-sm"
+                               onclick="return confirm('Завершить этот ремонт?')">
+                                ✅ Завершить
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Пагинация снизу -->
+            {% if active_repairs_pagination.pages > 1 %}
+            <nav aria-label="Навигация по страницам">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {% if not active_repairs_pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('main.repairs', page=active_repairs_pagination.prev_num) }}">
+                            ← Назад
+                        </a>
+                    </li>
+
+                    {% for page_num in active_repairs_pagination.iter_pages() %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == active_repairs_pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('main.repairs', page=page_num) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    <li class="page-item {% if not active_repairs_pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('main.repairs', page=active_repairs_pagination.next_num) }}">
+                            Вперед →
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Нет активных ремонтов
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button class="btn btn-primary" type="submit">Сохранить</button>
+            {% endif %}
+        </div>
+
+        <!-- Вкладка 2: Завершённые ремонты -->
+        <div class="tab-pane fade" id="completed" role="tabpanel" aria-labelledby="completed-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Завершённые ремонты</h4>
+                <div class="text-muted">
+                    Страница {{ completed_repairs_pagination.page }} из {{ completed_repairs_pagination.pages }}
+                    ({{ completed_repairs_pagination.total }} всего)
+                </div>
             </div>
-        </form>
+
+            {% if completed_display %}
+            <!-- Пагинация для завершенных -->
+            {% if completed_repairs_pagination.pages > 1 %}
+            <nav aria-label="Навигация по завершенным">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {% if not completed_repairs_pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('main.repairs', completed_page=completed_repairs_pagination.prev_num) }}#completed">
+                            ← Назад
+                        </a>
+                    </li>
+
+                    {% for page_num in completed_repairs_pagination.iter_pages() %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == completed_repairs_pagination.page %}active{% endif %}">
+                                <a class="page-link"
+                                   href="{{ url_for('main.repairs', completed_page=page_num) }}#completed">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    <li class="page-item {% if not completed_repairs_pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('main.repairs', completed_page=completed_repairs_pagination.next_num) }}#completed">
+                            Вперед →
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+
+            <table class="table table-striped table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Машина</th>
+                        <th>Описание ремонта</th>
+                        <th>Сотрудники</th>
+                        <th>Общая стоимость</th>
+                        <th>Дата завершения</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for w in completed_display %}
+                    <tr>
+                        <td><strong>#{{ w.id }}</strong></td>
+                        <td class="fw-bold">{{ w.car }}</td>
+                        <td>{{ w.description }}</td>
+                        <td>
+                            {% if w.employees %}
+                                {% for emp in w.employees %}
+                                <div>
+                                    <span class="badge bg-secondary mb-1">{{ emp.full_name }}</span>
+                                    <small class="text-muted">({{ emp.position }})</small>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">Не указаны</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-success fw-bold">{{ helper.format_currency(w.total_cost) }}</td>
+                        <td>{{ w.completion_date }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Пагинация снизу для завершенных -->
+            {% if completed_repairs_pagination.pages > 1 %}
+            <nav aria-label="Навигация по завершенным">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {% if not completed_repairs_pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('main.repairs', completed_page=completed_repairs_pagination.prev_num) }}#completed">
+                            ← Назад
+                        </a>
+                    </li>
+
+                    {% for page_num in completed_repairs_pagination.iter_pages() %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == completed_repairs_pagination.page %}active{% endif %}">
+                                <a class="page-link"
+                                   href="{{ url_for('main.repairs', completed_page=page_num) }}#completed">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    <li class="page-item {% if not completed_repairs_pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('main.repairs', completed_page=completed_repairs_pagination.next_num) }}#completed">
+                            Вперед →
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Завершённых ремонтов пока нет
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Форма добавления ремонта с AJAX фильтрацией -->
+    <div class="card mt-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">➕ Добавить новый ремонт</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('main.repairs') }}" class="row g-3" id="repairForm">
+                <div class="col-md-6">
+                    <label for="request_id" class="form-label">Обращение *</label>
+                    <select class="form-select" name="request_id" required>
+                        <option value="">Выберите обращение...</option>
+                        {% for req in requests %}
+                        <option value="{{ req.id }}">
+                            №{{ req.id }} — {{ req.car.display_info }} ({{ req.formatted_request_date }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="cost" class="form-label">Предварительная стоимость</label>
+                    <div class="input-group">
+                        <input type="number" step="0.01" class="form-control"
+                               name="cost" placeholder="0.00" min="0">
+                        <span class="input-group-text">₽</span>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label for="description" class="form-label">Описание работ *</label>
+                    <textarea class="form-control" name="description"
+                              placeholder="Опишите планируемые работы..."
+                              rows="3" required></textarea>
+                </div>
+
+                <!-- Фильтры для сотрудников -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">🔍 Поиск и фильтрация сотрудников</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Поиск по имени</label>
+                                    <input type="text" class="form-control" id="searchInput"
+                                           placeholder="Фамилия, имя...">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Должность</label>
+                                    <select class="form-select" id="positionFilter">
+                                        <option value="">Все должности</option>
+                                        {% for position in positions %}
+                                        <option value="{{ position }}">{{ position }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Стаж</label>
+                                    <select class="form-select" id="experienceFilter">
+                                        <option value="">Любой стаж</option>
+                                        <option value="junior">До 3 лет (Junior)</option>
+                                        <option value="middle">3-8 лет (Middle)</option>
+                                        <option value="senior">Более 8 лет (Senior)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">График работы</label>
+                                    <select class="form-select" id="scheduleFilter">
+                                        <option value="">Любой график</option>
+                                        {% for schedule in schedules %}
+                                        <option value="{{ schedule }}">{{ schedule }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Занятость</label>
+                                    <select class="form-select" id="availabilityFilter">
+                                        <option value="">Любая занятость</option>
+                                        <option value="free">Свободные (≤ 2 ремонта)</option>
+                                        <option value="busy">Занятые (> 2 ремонтов)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted" id="employeesCount">
+                                    Найдено сотрудников: {{ employees|length }}
+                                </small>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="resetFilters">
+                                    Сбросить фильтры
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Список сотрудников с AJAX обновлением -->
+                <div class="col-12">
+                    <label class="form-label">Назначить сотрудников</label>
+                    <div id="employeesContainer">
+                        <!-- Начальный список сотрудников -->
+                        {% if employees %}
+                        <div class="row">
+                            {% for emp in employees %}
+                            <div class="col-md-4 mb-2">
+                                <div class="card employee-card">
+                                    <div class="card-body p-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input employee-checkbox"
+                                                   type="checkbox"
+                                                   name="employee_ids"
+                                                   value="{{ emp.id }}"
+                                                   id="emp_{{ emp.id }}">
+                                            <label class="form-check-label w-100" for="emp_{{ emp.id }}">
+                                                <div class="fw-bold">{{ emp.full_name }}</div>
+                                                <div class="small text-muted">
+                                                    <div>{{ emp.position }}</div>
+                                                    <div>Стаж: {{ emp.experience }} лет</div>
+                                                    <div>График: {{ emp.schedule }}</div>
+                                                    <div class="text-success">З/п: {{ helper.format_currency(emp.salary) }}</div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> Нет доступных сотрудников
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        💾 Начать ремонт
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
+
+<style>
+.employee-list .badge {
+    font-size: 0.8em;
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+.pagination .page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+.employee-card {
+    border: 1px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+.employee-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+.employee-card.selected {
+    background-color: #e8f4ff;
+    border-color: #007bff;
+}
+.employee-card.border-warning {
+    border-color: #ffc107 !important;
+    background-color: #fffbf0;
+}
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+.availability-busy {
+    color: #dc3545;
+    font-weight: bold;
+}
+.availability-free {
+    color: #198754;
+}
+</style>
+
+<script>
+class EmployeeFilter {
+    constructor() {
+        this.filters = {
+            search: '',
+            position: '',
+            experience: '',
+            schedule: '',
+            availability: ''
+        };
+        this.init();
+    }
+
+    init() {
+        // Обработчики для фильтров
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            this.filters.search = e.target.value;
+            this.debouncedFilter();
+        });
+
+        document.getElementById('positionFilter').addEventListener('change', (e) => {
+            this.filters.position = e.target.value;
+            this.filterEmployees();
+        });
+
+        document.getElementById('experienceFilter').addEventListener('change', (e) => {
+            this.filters.experience = e.target.value;
+            this.filterEmployees();
+        });
+
+        document.getElementById('scheduleFilter').addEventListener('change', (e) => {
+            this.filters.schedule = e.target.value;
+            this.filterEmployees();
+        });
+
+        document.getElementById('availabilityFilter').addEventListener('change', (e) => {
+            this.filters.availability = e.target.value;
+            this.filterEmployees();
+        });
+
+        document.getElementById('resetFilters').addEventListener('click', () => {
+            this.resetFilters();
+        });
+
+        // Инициализация выбранных чекбоксов
+        this.initCheckboxes();
+
+        // Инициализация tooltips
+        this.initTooltips();
+    }
+
+    debouncedFilter() {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => {
+            this.filterEmployees();
+        }, 300);
+    }
+
+    async filterEmployees() {
+        const container = document.getElementById('employeesContainer');
+        const countElement = document.getElementById('employeesCount');
+
+        // Показываем индикатор загрузки
+        container.classList.add('loading');
+
+        try {
+            const params = new URLSearchParams();
+            if (this.filters.search) params.append('search', this.filters.search);
+            if (this.filters.position) params.append('position', this.filters.position);
+            if (this.filters.experience) params.append('experience', this.filters.experience);
+            if (this.filters.schedule) params.append('schedule', this.filters.schedule);
+            if (this.filters.availability) params.append('availability', this.filters.availability);
+
+            const response = await fetch(`/api/employees/filter?${params}`);
+            if (!response.ok) {
+                throw new Error('Ошибка сервера');
+            }
+
+            const data = await response.json();
+
+            // Сохраняем выбранные чекбоксы
+            const selectedEmployees = this.getSelectedEmployees();
+
+            // Обновляем контейнер
+            container.innerHTML = this.renderEmployees(data.employees);
+            countElement.textContent = `Найдено сотрудников: ${data.count}`;
+
+            // Восстанавливаем выбранные чекбоксы
+            this.restoreSelectedEmployees(selectedEmployees);
+
+            // Переинициализируем tooltips
+            this.initTooltips();
+
+        } catch (error) {
+            console.error('Ошибка фильтрации:', error);
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Ошибка загрузки сотрудников. Пожалуйста, попробуйте позже.
+                </div>
+            `;
+        } finally {
+            container.classList.remove('loading');
+        }
+    }
+
+    renderEmployees(employees) {
+        if (employees.length === 0) {
+            return `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Сотрудники не найдены по заданным фильтрам.
+                </div>
+            `;
+        }
+
+        return `
+            <div class="row">
+                ${employees.map(emp => `
+                    <div class="col-md-4 mb-2">
+                        <div class="card employee-card ${emp.availability === 'busy' ? 'border-warning' : ''}">
+                            <div class="card-body p-2">
+                                <div class="form-check">
+                                    <input class="form-check-input employee-checkbox"
+                                           type="checkbox"
+                                           name="employee_ids"
+                                           value="${emp.id}"
+                                           id="emp_${emp.id}"
+                                           ${emp.availability === 'busy' ? 'data-bs-toggle="tooltip" data-bs-title="Занят многими ремонтами"' : ''}>
+                                    <label class="form-check-label w-100" for="emp_${emp.id}">
+                                        <div class="fw-bold">${emp.full_name}</div>
+                                        <div class="small text-muted">
+                                            <div>${emp.position}</div>
+                                            <div>Стаж: ${emp.experience} лет</div>
+                                            <div>График: ${emp.schedule}</div>
+                                            <div class="text-success">З/п: ${emp.formatted_salary}</div>
+                                            <div class="${emp.availability === 'busy' ? 'availability-busy' : 'availability-free'}">
+                                                🛠️ Активных ремонтов: ${emp.active_repairs_count}
+                                                ${emp.availability === 'busy' ? ' 🔥' : ' ✅'}
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    getSelectedEmployees() {
+        const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    restoreSelectedEmployees(selectedIds) {
+        selectedIds.forEach(id => {
+            const checkbox = document.querySelector(`.employee-checkbox[value="${id}"]`);
+            if (checkbox) {
+                checkbox.checked = true;
+                checkbox.closest('.employee-card').classList.add('selected');
+            }
+        });
+    }
+
+    initCheckboxes() {
+        // Делегирование событий для чекбоксов
+        document.getElementById('employeesContainer').addEventListener('change', (e) => {
+            if (e.target.classList.contains('employee-checkbox')) {
+                const card = e.target.closest('.employee-card');
+                if (e.target.checked) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            }
+        });
+    }
+
+    initTooltips() {
+        // Инициализация Bootstrap tooltips
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    }
+
+    resetFilters() {
+        // Сбрасываем значения фильтров
+        document.getElementById('searchInput').value = '';
+        document.getElementById('positionFilter').value = '';
+        document.getElementById('experienceFilter').value = '';
+        document.getElementById('scheduleFilter').value = '';
+        document.getElementById('availabilityFilter').value = '';
+
+        this.filters = {
+            search: '',
+            position: '',
+            experience: '',
+            schedule: '',
+            availability: ''
+        };
+
+        this.filterEmployees();
+    }
+}
+
+// Защита от XSS - санация ввода
+function sanitizeInput(input) {
+    const div = document.createElement('div');
+    div.textContent = input;
+    return div.innerHTML;
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    new EmployeeFilter();
+
+    // Защита от CSRF - добавление токена к формам
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        if (form.method.toLowerCase() === 'post') {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (csrfToken) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'csrf_token';
+                input.value = csrfToken.content;
+                form.appendChild(input);
+            }
+        }
+    });
+});
+
+// Защита от внедрения кода в текстовые поля
+document.addEventListener('DOMContentLoaded', function() {
+    const textareas = document.querySelectorAll('textarea, input[type="text"]');
+    textareas.forEach(field => {
+        field.addEventListener('input', function(e) {
+            // Базовая защита - удаляем опасные конструкции
+            let value = e.target.value;
+            value = value.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+            value = value.replace(/javascript:/gi, '');
+            value = value.replace(/on\w+=/gi, '');
+            e.target.value = value;
+        });
+    });
+});
+</script>
 {% endblock %}

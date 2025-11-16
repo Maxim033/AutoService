@@ -1,27 +1,100 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Обращения</h2>
+<h2>📋 Обращения</h2>
 
-<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addRequestModal">Добавить обращение</button>
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addRequestModal">
+    ➕ Добавить обращение
+</button>
+
+<!-- Пагинация -->
+{% if requests_pagination.pages > 1 %}
+<nav aria-label="Навигация по страницам">
+    <ul class="pagination justify-content-center">
+        <li class="page-item {% if not requests_pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('main.requests', page=requests_pagination.prev_num) }}">
+                ← Назад
+            </a>
+        </li>
+
+        {% for page_num in requests_pagination.iter_pages() %}
+            {% if page_num %}
+                <li class="page-item {% if page_num == requests_pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('main.requests', page=page_num) }}">
+                        {{ page_num }}
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+
+        <li class="page-item {% if not requests_pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('main.requests', page=requests_pagination.next_num) }}">
+                Вперед →
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
+<div class="alert alert-info">
+    Страница {{ requests_pagination.page }} из {{ requests_pagination.pages }}
+    (показано {{ requests_pagination.items|length }} из {{ requests_pagination.total }} обращений)
+</div>
 
 <table class="table table-striped">
     <thead>
     <tr>
-        <th>ID</th><th>Автомобиль</th><th>Дата</th><th>Описание проблем</th>
+        <th>ID</th>
+        <th>Автомобиль</th>
+        <th>Дата</th>
+        <th>Описание проблем</th>
     </tr>
     </thead>
     <tbody>
-    {% for req in requests %}
+    {% for req in requests_pagination.items %}
         <tr>
             <td>{{ req.id }}</td>
             <td>{{ req.car.number }} ({{ req.car.brand }})</td>
-            <td>{{ req.request_date }}</td>
+            <td>{{ req.formatted_request_date }}</td>
             <td>{{ req.issues }}</td>
         </tr>
     {% endfor %}
     </tbody>
 </table>
 
+<!-- Пагинация снизу -->
+{% if requests_pagination.pages > 1 %}
+<nav aria-label="Навигация по страницам">
+    <ul class="pagination justify-content-center">
+        <li class="page-item {% if not requests_pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('main.requests', page=requests_pagination.prev_num) }}">
+                ← Назад
+            </a>
+        </li>
+
+        {% for page_num in requests_pagination.iter_pages() %}
+            {% if page_num %}
+                <li class="page-item {% if page_num == requests_pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('main.requests', page=page_num) }}">
+                        {{ page_num }}
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+
+        <li class="page-item {% if not requests_pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('main.requests', page=requests_pagination.next_num) }}">
+                Вперед →
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Модальное окно добавления обращения (остается без изменений) -->
 <div class="modal fade" id="addRequestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <form method="post" class="modal-content">

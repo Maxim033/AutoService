@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Выполненные работы</h2>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Автомобиль</th>
+      <th>Описание ремонта</th>
+      <th>Стоимость</th>
+      <th>Дата завершения</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for w in works %}
+    <tr>
+      <td>{{ w.id }}</td>
+      <td>{{ w.car.number }} ({{ w.car.brand }})</td>
+      <td>{{ w.repair.description }}</td>
+      <td>{{ w.total_cost }} ₽</td>
+      <td>{{ w.completion_date.strftime('%Y-%m-%d') }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="text-center">Нет завершённых работ</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
